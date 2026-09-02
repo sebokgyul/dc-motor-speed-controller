@@ -1,4 +1,4 @@
-# DC Motor Speed Controller
+## DC Motor Speed Controller
 
 I made this project alongside my computer science studies at ELTE to practice C
 and learn the basics of feedback control.
@@ -21,4 +21,4 @@ make
 make test
 ```
 
-The motor model is intentionally simple.
+The motor model is intentionally simple. AI was used to assist with tests and documentation.
