@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A deterministic operator dashboard for a simulated connected motor monitoring demo.">
+  <title>Connected Motor Monitoring &amp; Operator Assistance Demo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#dashboard">Skip to dashboard</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <div>
+        <p class="eyebrow">Manufacturing demo / Cell 04</p>
+        <h1>Connected Motor Monitoring</h1>
+      </div>
+    </div>
+    <div class="boundary-badge">
+      <span class="boundary-dot" aria-hidden="true"></span>
+      <span><strong>Replay only</strong>No actuator connection</span>
+    </div>
+  </header>
+
+  <main id="dashboard" class="workspace">
+    <aside class="control-rail" aria-label="Demo controls">
+      <section class="rail-section">
+        <p class="section-number">01 / Scenario</p>
+        <h2>Select machine condition</h2>
+        <div class="scenario-list" role="group" aria-label="Telemetry scenario">
+          <button class="scenario-button is-selected" type="button" data-scenario="normal" aria-pressed="true">
+            <span class="scenario-index">A</span>
+            <span><strong>Normal</strong><small>Closed-loop tracking</small></span>
+          </button>
+          <button class="scenario-button" type="button" data-scenario="sensor-disconnect" aria-pressed="false">
+            <span class="scenario-index">B</span>
+            <span><strong>Sensor Disconnect</strong><small>Invalid ADC signal</small></span>
+          </button>
+          <button class="scenario-button" type="button" data-scenario="mechanical-jam" aria-pressed="false">
+            <span class="scenario-index">C</span>
+            <span><strong>Mechanical Jam</strong><small>Sustained stall condition</small></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="rail-section">
+        <p class="section-number">02 / Replay</p>
+        <div class="transport" role="group" aria-label="Replay controls">
+          <button id="start-button" class="primary-control" type="button">Start</button>
+          <button id="pause-button" type="button" disabled>Pause</button>
+          <button id="reset-button" type="button">Reset</button>
+        </div>
+        <button id="guided-button" class="guided-button" type="button" aria-pressed="false">
+          <span class="guide-symbol" aria-hidden="true">03:00</span>
+          <span><strong>Guided interview demo</strong><small>Follow a concise presentation path</small></span>
+        </button>
+      </section>
+
+      <section class="boundary-card" aria-labelledby="control-boundary-title">
+        <p class="section-number">Control boundary</p>
+        <h2 id="control-boundary-title">Time-critical control stays local</h2>
+        <p>The C simulation evaluates the PI loop in fixed 10 ms steps. This page consumes recorded telemetry and cannot write PWM or GPIO outputs.</p>
+        <div class="boundary-flow" aria-label="Local control sends read-only telemetry to this dashboard">
+          <span>Local controller</span><i aria-hidden="true"></i><span>Read-only UI</span>
+        </div>
+      </section>
+    </aside>
+
+    <div class="dashboard-column">
+      <section id="load-error" class="load-error" role="alert" hidden></section>
+
+      <section id="guided-banner" class="guided-banner" aria-live="polite" hidden>
+        <span id="guided-step">Step 1 of 4</span>
+        <p id="guided-copy">Establish the boundary between local control and supervisory monitoring.</p>
+      </section>
+
+      <section class="status-strip" aria-labelledby="machine-summary">
+        <div>
+          <p class="eyebrow">Live replay state</p>
+          <h2 id="machine-summary">Machine disabled</h2>
+        </div>
+        <div class="status-meta">
+          <span id="scenario-label">Normal scenario</span>
+          <span id="simulation-time">T+00.0 s</span>
+          <span id="machine-state-badge" class="state-badge state-disabled">Disabled</span>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="Current telemetry">
+        <article class="metric-card target-card">
+          <div class="metric-heading"><span>SP</span><p>Target speed</p></div>
+          <p class="metric-value"><strong id="target-value">0</strong><span>RPM</span></p>
+          <div class="metric-track"><i id="target-bar"></i></div>
+        </article>
+        <article class="metric-card measured-card">
+          <div class="metric-heading"><span>PV</span><p>Measured speed</p></div>
+          <p class="metric-value"><strong id="measured-value">0</strong><span>RPM</span></p>
+          <div class="metric-track"><i id="measured-bar"></i></div>
+        </article>
+        <article class="metric-card pwm-card">
+          <div class="metric-heading"><span>OUT</span><p>PWM duty</p></div>
+          <p class="metric-value"><strong id="pwm-value">0.0</strong><span>%</span></p>
+          <div class="metric-track"><i id="pwm-bar"></i></div>
+        </article>
+        <article class="metric-card text-metric">
+          <div class="metric-heading"><span>CTRL</span><p>Controller</p></div>
+          <p id="controller-value" class="state-value">Disabled</p>
+          <small>10 ms simulated PI step</small>
+        </article>
+        <article class="metric-card text-metric">
+          <div class="metric-heading"><span>MON</span><p>Machine monitor</p></div>
+          <p id="monitor-value" class="state-value">Disabled</p>
+          <small id="fault-code-value">Fault code: NONE</small>
+        </article>
+      </section>
+
+      <div class="monitoring-grid">
+        <section class="panel chart-panel" aria-labelledby="chart-title">
+          <div class="panel-header">
+            <div>
+              <p class="section-number">Speed trend</p>
+              <h2 id="chart-title">Setpoint response</h2>
+            </div>
+            <div class="legend" aria-label="Chart legend">
+              <span><i class="legend-target"></i>Target</span>
+              <span><i class="legend-measured"></i>Measured</span>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="rpm-chart" role="img" aria-labelledby="chart-title" aria-describedby="chart-summary"></canvas>
+          </div>
+          <p id="chart-summary" class="sr-only">Target and measured motor speed over simulation time.</p>
+        </section>
+
+        <section class="panel event-panel" aria-labelledby="event-title">
+          <div class="panel-header">
+            <div>
+              <p class="section-number">Machine history</p>
+              <h2 id="event-title">Event log</h2>
+            </div>
+            <span class="event-count" id="event-count">0 events</span>
+          </div>
+          <ol id="event-log" class="event-log" aria-live="polite"></ol>
+        </section>
+      </div>
+
+      <section id="fault-panel" class="fault-panel" aria-labelledby="fault-title" hidden>
+        <div class="fault-heading">
+          <div class="fault-icon" aria-hidden="true"><span>!</span></div>
+          <div>
+            <p class="section-number">Operator assistance required</p>
+            <h2 id="fault-title">Fault detected</h2>
+            <p id="fault-message">Review the machine condition before taking action.</p>
+          </div>
+          <span id="fault-code-badge" class="fault-code">FAULT</span>
+        </div>
+
+        <div class="assistance-grid">
+          <section class="workflow" aria-labelledby="workflow-title">
+            <p class="section-number">Approved response</p>
+            <h3 id="workflow-title">Safe operator workflow</h3>
+            <ol id="workflow-steps">
+              <li>Confirm that the machine is in a safe state.</li>
+              <li>Inspect the indicated connection or physical obstruction.</li>
+              <li>Check the displayed telemetry and fault code.</li>
+              <li>Record the operator's observation.</li>
+              <li>Escalate to maintenance if the issue cannot be cleared safely.</li>
+            </ol>
+            <label for="operator-note">Operator observation</label>
+            <textarea id="operator-note" rows="3" placeholder="Record what was observed. This demo does not persist data."></textarea>
+            <button id="record-note-button" type="button">Record in event log</button>
+          </section>
+
+          <section class="assistant-card" aria-labelledby="assistant-title">
+            <div class="assistant-label"><span>SIM</span>Simulated AI-assistant response</div>
+            <h3 id="assistant-title">Advisory only</h3>
+            <p id="assistant-response">A deterministic sample response will appear for the active fault.</p>
+            <div class="source-box">
+              <p>Approved sample sources</p>
+              <ul id="assistant-sources"></ul>
+            </div>
+            <details>
+              <summary>Production guardrails</summary>
+              <ul>
+                <li>Read-only telemetry access</li>
+                <li>Approved documentation only</li>
+                <li>No direct actuator control</li>
+                <li>Visible source references</li>
+                <li>Uncertainty disclosure</li>
+                <li>Human confirmation before action</li>
+                <li>Logged recommendations and decisions</li>
+              </ul>
+            </details>
+            <p class="assistant-disclaimer">This is a rules-based mock, not a language-model integration. It cannot control the motor.</p>
+          </section>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <p>Deterministic data generated by the C simulation. No external API, cloud service, or internet connection is required.</p>
+    <a href="portfolio-one-pager.html">Printable project one-pager</a>
+  </footer>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,5 +1,10 @@
 #include "simulated_hal.h"
 
+#include <math.h>
+
+#define PWM_MIN_DUTY 0.0f
+#define PWM_MAX_DUTY 100.0f
+
 void hal_init(SimulatedHal *hal)
 {
     hal->target_adc = 0;
@@ -22,7 +27,11 @@ int hal_adc_read(const SimulatedHal *hal, AdcChannel channel)
         return hal->target_adc;
     }
 
-    return hal->speed_adc;
+    if (channel == ADC_MEASURED_SPEED) {
+        return hal->speed_adc;
+    }
+
+    return -1;
 }
 
 bool hal_gpio_read_enable(const SimulatedHal *hal)
@@ -32,7 +41,13 @@ bool hal_gpio_read_enable(const SimulatedHal *hal)
 
 void hal_pwm_write(SimulatedHal *hal, float duty)
 {
-    hal->pwm_duty = duty;
+    if (!isfinite(duty) || duty <= PWM_MIN_DUTY) {
+        hal->pwm_duty = PWM_MIN_DUTY;
+    } else if (duty >= PWM_MAX_DUTY) {
+        hal->pwm_duty = PWM_MAX_DUTY;
+    } else {
+        hal->pwm_duty = duty;
+    }
 }
 
 void hal_gpio_write_fault(SimulatedHal *hal, bool active)

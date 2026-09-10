@@ -4,9 +4,11 @@
 typedef struct {
     float speed_rpm;
     float time_constant_seconds;
+    float load_fraction;
 } MotorModel;
 
 void motor_model_init(MotorModel *model, float time_constant_seconds);
+void motor_model_set_load(MotorModel *model, float load_fraction);
 void motor_model_update(MotorModel *model, float pwm_duty, float sample_time_seconds);
 int motor_model_speed_adc(const MotorModel *model);
 int motor_model_rpm_to_adc(float speed_rpm);
