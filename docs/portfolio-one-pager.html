@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connected Motor Demo | Project One-Pager</title>
+  <style>
+    :root { --ink:#10202d; --muted:#526777; --cyan:#087f8c; --blue:#3158a6; --line:#c8d5dc; --paper:#fff; --soft:#edf5f6; --warn:#9d5d00; }
+    * { box-sizing: border-box; }
+    @page { size: A4; margin: 11mm; }
+    body { margin:0; color:var(--ink); background:#dce5e9; font:10.5px/1.42 Arial, Helvetica, sans-serif; }
+    .page { width:210mm; min-height:297mm; margin:18px auto; padding:12mm 13mm; background:var(--paper); box-shadow:0 8px 30px rgba(16,32,45,.16); }
+    header { display:grid; grid-template-columns:1fr auto; gap:12mm; align-items:start; padding-bottom:5mm; border-bottom:2px solid var(--ink); }
+    .kicker, h2 { color:var(--cyan); font-size:8px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:125mm; margin:1.5mm 0 2mm; font-size:25px; line-height:1.05; letter-spacing:-.035em; }
+    .subtitle { max-width:128mm; margin:0; color:var(--muted); font-size:11px; }
+    .repo { max-width:46mm; padding:3mm; border:1px solid var(--line); background:var(--soft); font-size:8.5px; overflow-wrap:anywhere; }
+    .repo strong { display:block; margin-bottom:1mm; text-transform:uppercase; }
+    .repo a { color:var(--blue); }
+    .summary { display:grid; grid-template-columns:1.25fr .75fr; gap:7mm; margin-top:6mm; }
+    h2 { margin:0 0 2mm; }
+    h3 { margin:0 0 1mm; font-size:11px; }
+    p { margin:0 0 2.2mm; }
+    ul { margin:0; padding-left:4mm; }
+    li { margin-bottom:1.2mm; }
+    .value { padding:4mm; border-left:3px solid var(--cyan); background:var(--soft); }
+    .stats { display:grid; grid-template-columns:1fr 1fr; gap:2mm; margin-top:3mm; }
+    .stat { padding:3mm; border:1px solid var(--line); }
+    .stat strong { display:block; color:var(--blue); font-size:16px; line-height:1; }
+    .stat span { color:var(--muted); font-size:8px; text-transform:uppercase; }
+    .architecture { margin-top:6mm; }
+    .flow { display:grid; grid-template-columns:repeat(5, 1fr); gap:2mm; align-items:stretch; }
+    .node { position:relative; display:grid; min-height:16mm; place-items:center; padding:2mm; border:1px solid var(--line); background:#fff; font-weight:700; text-align:center; }
+    .node:not(:last-child)::after { position:absolute; z-index:2; top:50%; right:-3mm; width:3.5mm; height:1px; background:var(--cyan); content:""; }
+    .node.local { border-color:var(--cyan); background:var(--soft); }
+    .node.ui { border-color:var(--blue); background:#f0f3fa; }
+    .boundary-note { margin:2mm 0 0; color:var(--muted); font-size:8.5px; }
+    .visual-grid { display:grid; grid-template-columns:1.18fr .82fr; gap:6mm; margin-top:6mm; }
+    .screenshot { min-height:73mm; padding:3mm; border:1px solid var(--ink); background:#0b1722; color:#eaf3f4; }
+    .shot-bar { display:flex; justify-content:space-between; padding-bottom:2mm; border-bottom:1px solid #324858; color:#90a8b8; font-size:7px; text-transform:uppercase; }
+    .shot-title { margin:3mm 0 2mm; font-size:11px; }
+    .shot-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:1.5mm; }
+    .shot-metric { padding:2mm; border:1px solid #2c4253; }
+    .shot-metric span { display:block; color:#8ba2b2; font-size:6.5px; text-transform:uppercase; }
+    .shot-metric strong { font:15px Consolas, monospace; }
+    .shot-chart { position:relative; height:28mm; margin-top:2mm; border:1px solid #2c4253; background:linear-gradient(#213342 1px,transparent 1px); background-size:100% 7mm; overflow:hidden; }
+    .shot-chart::before, .shot-chart::after { position:absolute; left:3%; right:3%; height:2px; content:""; transform-origin:left; }
+    .shot-chart::before { top:38%; background:#41c6d0; transform:skewY(-5deg); box-shadow:32mm 7mm #41c6d0, 60mm -2mm #41c6d0; }
+    .shot-chart::after { top:65%; background:#f1f6f7; transform:skewY(-13deg); box-shadow:30mm -8mm #f1f6f7, 60mm 4mm #f1f6f7; }
+    .shot-caption { margin:2mm 0 0; color:#8ba2b2; font-size:7px; }
+    .decisions { display:grid; gap:2mm; }
+    .decision { padding:2.5mm; border:1px solid var(--line); }
+    .decision strong { display:block; margin-bottom:.5mm; color:var(--cyan); }
+    .faults { display:grid; grid-template-columns:1fr 1fr; gap:3mm; margin-top:6mm; }
+    .fault { padding:3mm; border:1px solid var(--line); }
+    .fault code { display:block; margin:1mm 0; color:var(--warn); font-size:8px; }
+    .guardrail { margin-top:6mm; padding:3mm 4mm; border:1px solid var(--line); border-left:3px solid var(--blue); background:#f5f7fb; }
+    .guardrail p { margin:0; }
+    footer { display:flex; justify-content:space-between; gap:5mm; margin-top:6mm; padding-top:3mm; border-top:1px solid var(--line); color:var(--muted); font-size:8px; }
+    @media print { body { background:#fff; } .page { width:auto; min-height:auto; margin:0; padding:0; box-shadow:none; } }
+    @media (max-width:800px) { .page { width:100%; min-height:0; margin:0; padding:20px; } .summary,.visual-grid { grid-template-columns:1fr; } .flow { grid-template-columns:1fr; } .node:not(:last-child)::after { display:none; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <div class="kicker">Industrial software portfolio project</div>
+        <h1>Connected Motor Monitoring &amp; Operator Assistance Demo</h1>
+        <p class="subtitle">A deterministic C motor-control simulation extended with machine monitoring, structured telemetry, operator workflows, and a read-only static dashboard.</p>
+      </div>
+      <div class="repo">
+        <strong>Repository</strong>
+        <a href="https://github.com/sebokgyul/dc-motor-speed-controller">github.com/sebokgyul/<wbr>dc-motor-speed-controller</a>
+      </div>
+    </header>
+
+    <section class="summary">
+      <div>
+        <h2>Manufacturing problem</h2>
+        <p>A controls console exposes numbers but may not explain machine state, fault evidence, or safe next steps to an operator. This project adds that supervisory context without moving time-sensitive control into the browser.</p>
+        <div class="value">
+          <h3>Operator-focused result</h3>
+          <p>Replay Normal, Sensor Disconnect, and Mechanical Jam scenarios; compare target and measured RPM; inspect PWM and state transitions; then follow a concise, safety-conscious fault workflow.</p>
+        </div>
+      </div>
+      <div>
+        <h2>Engineering evidence</h2>
+        <div class="stats">
+          <div class="stat"><strong>10 ms</strong><span>Simulated PI step</span></div>
+          <div class="stat"><strong>3</strong><span>Scenarios</span></div>
+          <div class="stat"><strong>26</strong><span>Automated tests</span></div>
+          <div class="stat"><strong>0</strong><span>Runtime APIs</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="architecture">
+      <h2>Architecture and control boundary</h2>
+      <div class="flow" aria-label="Motor and sensors to HAL to local controller to telemetry to dashboard">
+        <div class="node local">Motor + sensors</div>
+        <div class="node local">Simulated HAL</div>
+        <div class="node local">Local PI control</div>
+        <div class="node">Telemetry + monitor</div>
+        <div class="node ui">Operator dashboard</div>
+      </div>
+      <p class="boundary-note">The controller-to-HAL-to-motor feedback loop remains local. The dashboard and advisory assistant receive read-only supervisory data and have no actuator path.</p>
+    </section>
+
+    <section class="visual-grid">
+      <div>
+        <h2>Dashboard screenshot area</h2>
+        <div class="screenshot" role="img" aria-label="Stylized preview of the operator dashboard">
+          <div class="shot-bar"><span>Cell 04 / Read-only replay</span><span>Running</span></div>
+          <div class="shot-title">Connected Motor Monitoring</div>
+          <div class="shot-metrics">
+            <div class="shot-metric"><span>Target</span><strong>2500</strong> RPM</div>
+            <div class="shot-metric"><span>Measured</span><strong>2382</strong> RPM</div>
+            <div class="shot-metric"><span>PWM</span><strong>81.2</strong> %</div>
+          </div>
+          <div class="shot-chart"></div>
+          <p class="shot-caption">Vector preview area. Replace with a final browser capture after owner visual review if desired.</p>
+        </div>
+      </div>
+      <div>
+        <h2>Key engineering decisions</h2>
+        <div class="decisions">
+          <div class="decision"><strong>Keep control local</strong>The fixed 10 ms simulated PI path models a task that would be scheduled locally and would not depend on UI, network, or assistant latency.</div>
+          <div class="decision"><strong>Separate causes from reactions</strong>Scenarios inject conditions; the controller reacts to inputs; the monitor classifies machine state.</div>
+          <div class="decision"><strong>Require sustained evidence</strong>Stall detection warns first, then latches after 750 ms of low speed and high PWM.</div>
+          <div class="decision"><strong>Make data reproducible</strong>The dashboard replays committed JSON Lines regenerated from the C executable.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="faults">
+      <article class="fault">
+        <h3>Sensor Disconnect</h3>
+        <code>F101_SENSOR_SIGNAL_INVALID</code>
+        <p>Out-of-range ADC input causes an immediate local input fault and zero PWM. The valid target remains visible as diagnostic context.</p>
+      </article>
+      <article class="fault">
+        <h3>Mechanical Jam</h3>
+        <code>F201_MOTOR_STALL</code>
+        <p>A documented monitor checks target, speed ratio, drive effort, and persistence before latching a local simulated stop request.</p>
+      </article>
+    </section>
+
+    <section class="guardrail">
+      <h2>Bounded advisory assistant concept</h2>
+      <p>The UI contains a clearly labeled deterministic mock, not a language-model integration. A production agent would be restricted to read-only telemetry and approved documents, show sources and uncertainty, require human confirmation, log recommendations and decisions, and have no direct actuator control.</p>
+    </section>
+
+    <footer>
+      <span>C99 / strict warnings / deterministic host simulation / HTML + CSS + JavaScript</span>
+      <span>Standalone portfolio demo: not connected to Tulip or real equipment</span>
+    </footer>
+  </main>
+</body>
+</html>

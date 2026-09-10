@@ -1,87 +1,93 @@
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
-#include "motor_controller.h"
-#include "motor_model.h"
-#include "simulated_hal.h"
+#include "scenario.h"
+#include "simulation.h"
+#include "telemetry.h"
 
-#define SAMPLE_TIME_SECONDS 0.01f
-#define SIMULATION_TIME_SECONDS 11.0f
-#define PRINT_INTERVAL_STEPS 50
+#define TABLE_INTERVAL_MS 500U
+#define MACHINE_READABLE_INTERVAL_MS 100U
 
-static float target_speed_at(float time_seconds)
+typedef struct {
+    TelemetryFormat format;
+    bool write_failed;
+} OutputContext;
+
+static bool print_usage(FILE *stream, const char *program_name)
 {
-    if (time_seconds < 1.0f) {
-        return 0.0f;
-    }
-
-    if (time_seconds < 5.0f) {
-        return 1800.0f;
-    }
-
-    if (time_seconds < 8.0f) {
-        return 2500.0f;
-    }
-
-    if (time_seconds < 10.0f) {
-        return 1200.0f;
-    }
-
-    return 0.0f;
+    return fprintf(
+        stream,
+        "Usage: %s [--scenario normal|sensor-disconnect|mechanical-jam]\n"
+        "          [--format table|jsonl|csv]\n",
+        program_name
+    ) >= 0;
 }
 
-static bool motor_is_enabled(float time_seconds)
+static void write_telemetry(const TelemetryRecord *record, void *context)
 {
-    return time_seconds >= 1.0f && time_seconds < 10.0f;
+    OutputContext *output = context;
+
+    if (!telemetry_write_record(stdout, output->format, record)) {
+        output->write_failed = true;
+    }
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
-    MotorController controller;
-    MotorModel motor;
-    SimulatedHal hal;
-    int step;
-    int total_steps = (int)(SIMULATION_TIME_SECONDS / SAMPLE_TIME_SECONDS);
+    ScenarioType scenario = SCENARIO_NORMAL;
+    TelemetryFormat format = TELEMETRY_TABLE;
+    OutputContext output;
+    uint32_t interval_ms;
+    int argument;
 
-    motor_controller_init(&controller, 0.03f, 0.06f);
-    motor_model_init(&motor, 0.35f);
-    hal_init(&hal);
+    for (argument = 1; argument < argc; argument += 1) {
+        if (strcmp(argv[argument], "--help") == 0) {
+            if (!print_usage(stdout, argv[0])
+                || fflush(stdout) != 0
+                || ferror(stdout)) {
+                fprintf(stderr, "Help output failed.\n");
+                return 1;
+            }
+            return 0;
+        }
 
-    printf(" time | target | measured | pwm duty | status\n");
-    printf("======+========+==========+==========+=============\n");
-
-    for (step = 0; step <= total_steps; step += 1) {
-        float time_seconds = (float)step * SAMPLE_TIME_SECONDS;
-        ControllerInput input;
-        ControllerOutput output;
-
-        hal_set_inputs(
-            &hal,
-            motor_model_rpm_to_adc(target_speed_at(time_seconds)),
-            motor_model_speed_adc(&motor),
-            motor_is_enabled(time_seconds)
-        );
-
-        input.target_adc = hal_adc_read(&hal, ADC_TARGET_SPEED);
-        input.speed_adc = hal_adc_read(&hal, ADC_MEASURED_SPEED);
-        input.enable = hal_gpio_read_enable(&hal);
-
-        output = motor_controller_update(&controller, input, SAMPLE_TIME_SECONDS);
-        hal_pwm_write(&hal, output.pwm_duty);
-        hal_gpio_write_fault(&hal, output.fault_led);
-        motor_model_update(&motor, hal_pwm_read(&hal), SAMPLE_TIME_SECONDS);
-
-        if (step % PRINT_INTERVAL_STEPS == 0) {
-            printf(
-                "%5.1f | %6.0f | %8.0f | %8.1f | %s\n",
-                (double)time_seconds,
-                (double)output.target_rpm,
-                (double)output.measured_rpm,
-                (double)output.pwm_duty,
-                controller_status_name(output.status)
-            );
+        if (strcmp(argv[argument], "--scenario") == 0) {
+            argument += 1;
+            if (argument >= argc || !scenario_parse(argv[argument], &scenario)) {
+                fprintf(stderr, "Invalid or missing scenario.\n");
+                print_usage(stderr, argv[0]);
+                return 2;
+            }
+        } else if (strcmp(argv[argument], "--format") == 0) {
+            argument += 1;
+            if (argument >= argc || !telemetry_format_parse(argv[argument], &format)) {
+                fprintf(stderr, "Invalid or missing telemetry format.\n");
+                print_usage(stderr, argv[0]);
+                return 2;
+            }
+        } else {
+            fprintf(stderr, "Unknown argument: %s\n", argv[argument]);
+            print_usage(stderr, argv[0]);
+            return 2;
         }
     }
 
-    return hal_gpio_read_fault(&hal) ? 1 : 0;
+    output.format = format;
+    output.write_failed = false;
+    interval_ms = format == TELEMETRY_TABLE
+        ? TABLE_INTERVAL_MS
+        : MACHINE_READABLE_INTERVAL_MS;
+
+    if (!telemetry_write_header(stdout, format)
+        || !simulation_run(scenario, interval_ms, write_telemetry, &output)
+        || output.write_failed
+        || fflush(stdout) != 0
+        || ferror(stdout)) {
+        fprintf(stderr, "Simulation output failed.\n");
+        return 1;
+    }
+
+    return 0;
 }
