@@ -24,6 +24,7 @@ typedef struct {
     MachineStatus status;
     FaultCode fault_code;
     float stall_elapsed_seconds;
+    bool stall_active;
     bool stop_requested;
 } MachineMonitor;
 

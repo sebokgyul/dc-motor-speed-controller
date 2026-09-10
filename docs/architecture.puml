@@ -1,5 +1,5 @@
 @startuml
-title Connected Motor Monitoring & Operator Assistance Demo
+title Connected Motor Monitoring Demo
 
 left to right direction
 skinparam componentStyle rectangle
@@ -28,15 +28,14 @@ package "Local machine-control layer" #EAF4F6 {
 
 component "Telemetry /\nsupervisory layer" as Telemetry #DDEBFF
 component "Operator dashboard\nread-only replay" as Dashboard #E5F6E9
-component "Bounded advisory\nassistant" as Assistant #FFF0CF
-artifact "Approved troubleshooting\ndocumentation" as Docs #FFF8E8
+component "Rules-based guidance\ninside dashboard" as Guidance #FFF0CF
 
-Controller --> Telemetry : target / speed / PWM / state
+Controller --> Telemetry : target / speed / PI request / state
+HAL --> Telemetry : applied PWM
 Monitor --> Telemetry : machine state / fault / event
 Telemetry --> Dashboard : JSON Lines or CSV
-Telemetry --> Assistant : read-only context
-Docs --> Assistant : approved content only
-Assistant --> Dashboard : sourced recommendation\n+ uncertainty disclosure
+Telemetry --> Guidance : fault record +\nrecent telemetry snapshot
+Guidance --> Dashboard : deterministic\nsample response
 
 note bottom of Controller
   The host program advances simulated time in fixed steps.
@@ -44,9 +43,9 @@ note bottom of Controller
   Browser or network timing cannot affect PWM.
 end note
 
-note bottom of Assistant
-  Advisory only. No path to motor actuators.
-  Human confirmation is required before action.
+note bottom of Guidance
+  Hard-coded demo text, not a language model.
+  No document retrieval or actuator path.
 end note
 
 note bottom of Dashboard

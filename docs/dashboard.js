@@ -27,6 +27,7 @@
     timer: null,
     playing: false,
     previousRecord: null,
+    faultEvidence: null,
     guided: false,
     requestNumber: 0
   };
@@ -49,6 +50,7 @@
     target: document.getElementById("target-value"),
     measured: document.getElementById("measured-value"),
     pwm: document.getElementById("pwm-value"),
+    controllerPwmNote: document.getElementById("controller-pwm-note"),
     targetBar: document.getElementById("target-bar"),
     measuredBar: document.getElementById("measured-bar"),
     pwmBar: document.getElementById("pwm-bar"),
@@ -156,22 +158,24 @@
     state.previousRecord = record;
   }
 
-  function recentTelemetrySummary(record) {
-    var start = Math.max(0, state.index - 10);
-    var recent = state.records.slice(start, state.index + 1);
-    var peakPwm = recent.reduce(function (peak, item) {
-      return Math.max(peak, item.pwm_duty);
+  function recentTelemetrySummary(record, recordIndex) {
+    var end = Number.isInteger(recordIndex) ? recordIndex : state.index;
+    var start = Math.max(0, end - 10);
+    var recent = state.records.slice(start, end + 1);
+    var peakControllerPwm = recent.reduce(function (peak, item) {
+      return Math.max(peak, item.controller_pwm_duty);
     }, 0);
 
     return {
       target: Math.round(record.target_rpm),
       measured: Number.isFinite(record.measured_rpm) ? Math.round(record.measured_rpm) : "unavailable",
-      peakPwm: peakPwm.toFixed(1)
+      peakControllerPwm: peakControllerPwm.toFixed(1)
     };
   }
 
-  function populateAssistant(record) {
-    var telemetry = recentTelemetrySummary(record);
+  function populateGuidance(evidence) {
+    var record = evidence.record;
+    var telemetry = evidence.telemetry;
     var sources;
 
     if (record.fault_code === "F101_SENSOR_SIGNAL_INVALID") {
@@ -182,20 +186,20 @@
         "with a disconnected or out-of-range sensor signal, but the simulated evidence cannot prove " +
         "the physical cause. Keep the machine safe and inspect the feedback connection before escalation.";
       sources = [
-        "TRB-101 / Speed-feedback checks (approved sample)",
-        "SOP-01 / Safe inspection and escalation (approved sample)"
+        "TRB-101 / Speed-feedback checks",
+        "SOP-01 / Safe inspection and escalation"
       ];
     } else if (record.fault_code === "F201_MOTOR_STALL") {
       elements.faultTitle.textContent = "Sustained motor stall detected";
       elements.assistantResponse.textContent =
         "Measured speed fell to " + telemetry.measured + " RPM against a " + telemetry.target +
-        " RPM target while recent PWM reached " + telemetry.peakPwm +
+        " RPM target while the PI request reached " + telemetry.peakControllerPwm +
         "%. The local monitor then requested a stop. This pattern is consistent with an obstruction " +
         "or excessive load, not proof of either cause. Do not restart; confirm a safe state and inspect " +
         "only within the approved procedure.";
       sources = [
-        "TRB-201 / Stalled-motor checks (approved sample)",
-        "SOP-01 / Safe inspection and escalation (approved sample)"
+        "TRB-201 / Stalled-motor checks",
+        "SOP-01 / Safe inspection and escalation"
       ];
     } else {
       elements.faultTitle.textContent = "Local controller configuration fault";
@@ -205,7 +209,7 @@
         "in a safe state and escalate the controller or timing configuration to qualified maintenance. " +
         "Do not treat this fallback guidance as a root-cause determination.";
       sources = [
-        "SOP-01 / Safe inspection and escalation (approved sample)"
+        "SOP-01 / Safe inspection and escalation"
       ];
     }
 
@@ -223,10 +227,18 @@
       return;
     }
 
+    if (state.faultEvidence === null
+        || state.faultEvidence.record.fault_code !== record.fault_code) {
+      state.faultEvidence = {
+        record: record,
+        telemetry: recentTelemetrySummary(record)
+      };
+    }
+
     elements.faultPanel.hidden = false;
     elements.faultMessage.textContent = record.fault_message;
     elements.faultCodeBadge.textContent = record.fault_code;
-    populateAssistant(record);
+    populateGuidance(state.faultEvidence);
   }
 
   function updateGuidedStep(record) {
@@ -268,7 +280,7 @@
     canvas.height = Math.round(height * ratio);
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     context.clearRect(0, 0, width, height);
-    context.font = "10px " + getComputedStyle(document.documentElement).getPropertyValue("--mono");
+    context.font = "12px " + getComputedStyle(document.documentElement).getPropertyValue("--mono");
     context.textBaseline = "middle";
 
     [0, 1000, 2000, 3000].forEach(function (rpm) {
@@ -341,12 +353,14 @@
 
     elements.target.textContent = Math.round(record.target_rpm);
     elements.measured.textContent = measuredAvailable ? Math.round(record.measured_rpm) : "--";
-    elements.pwm.textContent = record.pwm_duty.toFixed(1);
+    elements.pwm.textContent = record.applied_pwm_duty.toFixed(1);
+    elements.controllerPwmNote.textContent = "PI request: " +
+      record.controller_pwm_duty.toFixed(1) + "%";
     elements.targetBar.style.width = Math.min(record.target_rpm / 3000 * 100, 100) + "%";
     elements.measuredBar.style.width = measuredAvailable
       ? Math.min(record.measured_rpm / 3000 * 100, 100) + "%"
       : "0%";
-    elements.pwmBar.style.width = Math.min(record.pwm_duty, 100) + "%";
+    elements.pwmBar.style.width = Math.min(record.applied_pwm_duty, 100) + "%";
     elements.controller.textContent = titleCase(record.controller_status);
     elements.monitor.textContent = titleCase(machineStatus);
     elements.faultCodeValue.textContent = "Fault code: " + record.fault_code;
@@ -398,20 +412,48 @@
     stopReplay();
     state.index = 0;
     clearEvents();
+    state.faultEvidence = null;
     elements.operatorNote.value = "";
     showCurrentRecord();
   }
 
+  function recordsAreValid(records) {
+    return records.every(function (record, index) {
+      var measuredIsValid = record.measured_rpm === null
+        || Number.isFinite(record.measured_rpm);
+      var timestampIsOrdered = index === 0
+        || record.timestamp_ms > records[index - 1].timestamp_ms;
+
+      return Number.isInteger(record.timestamp_ms)
+        && record.timestamp_ms >= 0
+        && timestampIsOrdered
+        && Number.isFinite(record.target_rpm)
+        && measuredIsValid
+        && Number.isFinite(record.controller_pwm_duty)
+        && Number.isFinite(record.applied_pwm_duty)
+        && typeof record.controller_status === "string"
+        && typeof record.machine_status === "string"
+        && typeof record.fault_code === "string"
+        && typeof record.fault_message === "string";
+    });
+  }
+
   function parseJsonLines(text) {
-    return text.trim().split("\n").filter(Boolean).map(function (line) {
+    var records = text.trim().split("\n").filter(Boolean).map(function (line) {
       return JSON.parse(line);
     });
+
+    if (!recordsAreValid(records)) {
+      throw new Error("Telemetry records do not match the expected schema.");
+    }
+    return records;
   }
 
   function renderLoadingState(scenario) {
     elements.target.textContent = "0";
     elements.measured.textContent = "--";
     elements.pwm.textContent = "0.0";
+    elements.controllerPwmNote.textContent = "PI request: 0.0%";
     elements.targetBar.style.width = "0%";
     elements.measuredBar.style.width = "0%";
     elements.pwmBar.style.width = "0%";
@@ -428,7 +470,35 @@
     drawChart();
   }
 
-  function loadScenario(scenario, startAfterLoad) {
+  function showReplayAt(timestampMs) {
+    var targetIndex = 0;
+    var recordIndex;
+
+    for (recordIndex = 0; recordIndex < state.records.length; recordIndex += 1) {
+      if (state.records[recordIndex].timestamp_ms > timestampMs) {
+        break;
+      }
+      targetIndex = recordIndex;
+    }
+
+    stopReplay();
+    clearEvents();
+    state.faultEvidence = null;
+    state.index = targetIndex;
+    for (recordIndex = 0; recordIndex <= targetIndex; recordIndex += 1) {
+      trackEvents(state.records[recordIndex]);
+      if (state.faultEvidence === null
+          && state.records[recordIndex].fault_code !== "NONE") {
+        state.faultEvidence = {
+          record: state.records[recordIndex],
+          telemetry: recentTelemetrySummary(state.records[recordIndex], recordIndex)
+        };
+      }
+    }
+    showCurrentRecord();
+  }
+
+  function loadScenario(scenario, startAfterLoad, initialTimestampMs) {
     var requestNumber = state.requestNumber + 1;
     state.requestNumber = requestNumber;
     stopReplay();
@@ -455,7 +525,9 @@
         throw new Error("The telemetry file is empty.");
       }
       resetReplay();
-      if (startAfterLoad) {
+      if (Number.isFinite(initialTimestampMs)) {
+        showReplayAt(initialTimestampMs);
+      } else if (startAfterLoad) {
         startReplay();
       }
     }).catch(function (error) {
@@ -463,8 +535,8 @@
         return;
       }
       elements.loadError.hidden = false;
-      elements.loadError.textContent = "Unable to load local telemetry: " + error.message +
-        " Serve the docs directory over a local web server rather than opening the HTML file directly.";
+      elements.loadError.textContent = "Unable to load telemetry: " + error.message +
+        " Check that the data files are present and that this page is served over HTTP.";
       elements.machineSummary.textContent = "Telemetry unavailable";
       elements.machineBadge.textContent = "Unavailable";
       setPlaying(false);
@@ -517,6 +589,22 @@
     elements.operatorNote.value = "";
   });
 
+  function initialView() {
+    var parameters = new URLSearchParams(window.location.search);
+    var requestedScenario = parameters.get("scenario");
+    var requestedTimestamp = Number(parameters.get("at"));
+
+    return {
+      scenario: Object.prototype.hasOwnProperty.call(DATA_FILES, requestedScenario)
+        ? requestedScenario
+        : "normal",
+      timestamp: parameters.has("at") && Number.isFinite(requestedTimestamp)
+        ? Math.max(0, requestedTimestamp)
+        : null
+    };
+  }
+
   window.addEventListener("resize", drawChart);
-  loadScenario("normal", false);
+  var openingView = initialView();
+  loadScenario(openingView.scenario, false, openingView.timestamp);
 }());

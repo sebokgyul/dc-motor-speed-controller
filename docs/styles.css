@@ -154,7 +154,7 @@ a {
   margin: 0;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.69rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -196,14 +196,24 @@ h3 {
 .boundary-badge span:last-child {
   display: grid;
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .boundary-badge strong {
   color: var(--text);
-  font-size: 0.73rem;
+  font-size: 0.75rem;
+}
+
+.mobile-boundary {
+  display: none;
+  margin: 0;
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .boundary-dot {
@@ -284,7 +294,7 @@ h3 {
   border: 1px solid var(--line-bright);
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
 }
 
 .is-selected .scenario-index {
@@ -299,13 +309,13 @@ h3 {
 
 .scenario-button strong,
 .guided-button strong {
-  font-size: 0.78rem;
+  font-size: 0.875rem;
 }
 
 .scenario-button small,
 .guided-button small {
   color: var(--muted);
-  font-size: 0.67rem;
+  font-size: 0.75rem;
 }
 
 .transport {
@@ -320,7 +330,7 @@ h3 {
   border: 1px solid var(--line-bright);
   border-radius: var(--radius);
   background: transparent;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -344,7 +354,7 @@ h3 {
 .guide-symbol {
   color: var(--cyan);
   font-family: var(--mono);
-  font-size: 0.67rem;
+  font-size: 0.75rem;
 }
 
 .boundary-card {
@@ -353,14 +363,14 @@ h3 {
 
 .boundary-card p:not(.section-number) {
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: 0.875rem;
 }
 
 .boundary-flow {
   justify-content: space-between;
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.61rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 
@@ -416,7 +426,7 @@ h3 {
   flex: 0 0 auto;
   color: #aebfff;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -424,7 +434,7 @@ h3 {
 
 .guided-banner p {
   margin-bottom: 0;
-  font-size: 0.82rem;
+  font-size: 0.875rem;
 }
 
 .status-strip {
@@ -462,7 +472,7 @@ h3 {
   gap: 0.55rem;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.67rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 
@@ -520,14 +530,14 @@ h3 {
   border: 1px solid var(--line-bright);
   color: var(--cyan);
   font-family: var(--mono);
-  font-size: 0.57rem;
+  font-size: 0.75rem;
 }
 
 .metric-heading p {
   overflow: hidden;
   margin-bottom: 0;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.8rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -549,7 +559,7 @@ h3 {
 .metric-value span {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.58rem;
+  font-size: 0.75rem;
 }
 
 .metric-track {
@@ -590,9 +600,16 @@ h3 {
   display: block;
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.61rem;
+  font-size: 0.75rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+#controller-pwm-note {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 .monitoring-grid {
@@ -624,7 +641,7 @@ h3 {
   gap: 0.8rem;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 
@@ -661,7 +678,7 @@ h3 {
 .event-count {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 
@@ -681,7 +698,7 @@ h3 {
   padding: 0.65rem 0;
   border-bottom: 1px solid rgba(56, 84, 107, 0.45);
   color: #c6d4de;
-  font-size: 0.68rem;
+  font-size: 0.8125rem;
 }
 
 .event-log time {
@@ -760,7 +777,7 @@ h3 {
   border: 1px solid var(--red);
   color: var(--red);
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
 }
 
 .assistance-grid {
@@ -787,7 +804,7 @@ h3 {
 .workflow ol {
   padding-left: 1.3rem;
   color: #cbd5dc;
-  font-size: 0.77rem;
+  font-size: 0.875rem;
 }
 
 .workflow li {
@@ -799,7 +816,7 @@ h3 {
   display: block;
   margin: 1rem 0 0.4rem;
   color: var(--muted);
-  font-size: 0.69rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -812,7 +829,7 @@ h3 {
   border-radius: var(--radius);
   background: var(--bg);
   color: var(--text);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 #record-note-button {
@@ -825,7 +842,7 @@ h3 {
   gap: 0.5rem;
   color: #b7c6ff;
   font-family: var(--mono);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -839,7 +856,7 @@ h3 {
 
 #assistant-response {
   color: #cfdae3;
-  font-size: 0.79rem;
+  font-size: 0.875rem;
 }
 
 .source-box {
@@ -853,42 +870,22 @@ h3 {
   margin-bottom: 0.35rem;
   color: #aebfff;
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.source-box ul,
-.assistant-card details ul {
+.source-box ul {
   margin: 0;
   padding-left: 1.15rem;
   color: var(--muted);
-  font-size: 0.7rem;
-}
-
-.assistant-card details {
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 0.7rem 0;
-  color: var(--muted);
-  font-size: 0.72rem;
-}
-
-.assistant-card summary {
-  color: var(--text);
-  cursor: pointer;
-  font-weight: 700;
-}
-
-.assistant-card details ul {
-  columns: 2;
-  margin-top: 0.65rem;
+  font-size: 0.8125rem;
 }
 
 .assistant-disclaimer {
   margin: 0.8rem 0 0;
   color: var(--amber);
-  font-size: 0.67rem;
+  font-size: 0.75rem;
 }
 
 footer {
@@ -897,7 +894,7 @@ footer {
   gap: 1rem;
   padding: 1rem clamp(1rem, 3vw, 3rem) 2rem;
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 
 footer p {
@@ -936,6 +933,10 @@ footer p {
 
   .boundary-badge {
     display: none;
+  }
+
+  .mobile-boundary {
+    display: block;
   }
 
   .workspace {
@@ -1029,6 +1030,10 @@ footer p {
     padding: 0.7rem;
   }
 
+  .rail-section {
+    padding: 0.9rem;
+  }
+
   .control-rail {
     grid-template-columns: 1fr;
   }
@@ -1039,15 +1044,31 @@ footer p {
   }
 
   .scenario-list {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .scenario-button {
-    align-items: center;
+    min-height: 54px;
+    justify-content: center;
+    padding: 0.55rem 0.35rem;
+    text-align: center;
   }
 
   .scenario-index {
-    display: grid;
+    display: none;
+  }
+
+  .scenario-button small {
+    display: none;
+  }
+
+  .scenario-button strong {
+    font-size: 0.875rem;
+    line-height: 1.25;
+  }
+
+  .boundary-card {
+    display: none;
   }
 
   .metric-grid {
@@ -1088,9 +1109,6 @@ footer p {
     overflow-wrap: anywhere;
   }
 
-  .assistant-card details ul {
-    columns: 1;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

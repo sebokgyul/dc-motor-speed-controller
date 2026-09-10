@@ -348,10 +348,14 @@ static bool motor_model_handles_load_and_non_finite_conversion(void)
 {
     MotorModel motor;
 
-    ASSERT_TRUE(motor_model_rpm_to_adc(NAN) == 0);
-    ASSERT_TRUE(motor_model_rpm_to_adc(INFINITY) == 0);
+    ASSERT_TRUE(motor_model_rpm_to_adc(NAN) == -1);
+    ASSERT_TRUE(motor_model_rpm_to_adc(INFINITY) == -1);
     ASSERT_TRUE(motor_model_rpm_to_adc(-100.0f) == 0);
     ASSERT_TRUE(motor_model_rpm_to_adc(4000.0f) == ADC_MAX_VALUE);
+
+    motor_model_init(&motor, 0.35f);
+    motor.speed_rpm = NAN;
+    ASSERT_TRUE(motor_model_speed_adc(&motor) == -1);
 
     motor_model_init(&motor, 0.35f);
     motor_model_set_load(&motor, 1.0f);
@@ -402,6 +406,7 @@ static ControllerOutput running_output(
 
     output.target_rpm = target_rpm;
     output.measured_rpm = measured_rpm;
+    output.measured_rpm_valid = true;
     output.pwm_duty = pwm_duty;
     output.status = CONTROLLER_RUNNING;
     return output;
@@ -414,7 +419,7 @@ static bool machine_monitor_warns_then_latches_stall(void)
     int sample;
 
     machine_monitor_init(&monitor);
-    for (sample = 0; sample < 74; sample += 1) {
+    for (sample = 0; sample < 75; sample += 1) {
         ASSERT_TRUE(machine_monitor_update(
             &monitor,
             output,
@@ -430,6 +435,7 @@ static bool machine_monitor_warns_then_latches_stall(void)
         SAMPLE_TIME_SECONDS
     ) == MACHINE_FAULT);
     ASSERT_TRUE(monitor.fault_code == FAULT_MOTOR_STALL);
+    ASSERT_TRUE(float_is_close(monitor.stall_elapsed_seconds, 0.75f, 0.00001f));
     ASSERT_TRUE(machine_monitor_stop_requested(&monitor));
 
     output = running_output(2000.0f, 2000.0f, 50.0f);
@@ -443,6 +449,7 @@ static bool machine_monitor_warns_then_latches_stall(void)
     machine_monitor_init(&monitor);
     ASSERT_TRUE(monitor.status == MACHINE_DISABLED);
     ASSERT_TRUE(monitor.fault_code == FAULT_NONE);
+    ASSERT_TRUE(!monitor.stall_active);
     ASSERT_TRUE(!machine_monitor_stop_requested(&monitor));
     return true;
 }
@@ -455,7 +462,8 @@ static bool machine_monitor_clears_unconfirmed_stall_timer(void)
 
     machine_monitor_init(&monitor);
     machine_monitor_update(&monitor, stalled, true, SAMPLE_TIME_SECONDS);
-    ASSERT_TRUE(monitor.stall_elapsed_seconds > 0.0f);
+    ASSERT_TRUE(monitor.stall_active);
+    ASSERT_TRUE(monitor.stall_elapsed_seconds == 0.0f);
     ASSERT_TRUE(machine_monitor_update(
         &monitor,
         recovered,
@@ -463,6 +471,7 @@ static bool machine_monitor_clears_unconfirmed_stall_timer(void)
         SAMPLE_TIME_SECONDS
     ) == MACHINE_RUNNING);
     ASSERT_TRUE(monitor.stall_elapsed_seconds == 0.0f);
+    ASSERT_TRUE(!monitor.stall_active);
     return true;
 }
 
@@ -512,6 +521,17 @@ static bool machine_monitor_rejects_other_invalid_controller_state(void)
         SAMPLE_TIME_SECONDS
     ) == MACHINE_FAULT);
     ASSERT_TRUE(monitor.fault_code == FAULT_CONTROLLER_CONFIGURATION);
+
+    machine_monitor_init(&monitor);
+    output = running_output(2000.0f, 200.0f, 80.0f);
+    output.measured_rpm_valid = false;
+    ASSERT_TRUE(machine_monitor_update(
+        &monitor,
+        output,
+        true,
+        SAMPLE_TIME_SECONDS
+    ) == MACHINE_FAULT);
+    ASSERT_TRUE(monitor.fault_code == FAULT_SENSOR_SIGNAL_INVALID);
     return true;
 }
 
@@ -523,8 +543,10 @@ typedef struct {
 } SimulationCapture;
 
 typedef struct {
+    bool warning_seen;
     bool fault_seen;
     bool nonzero_fault_pwm_seen;
+    uint32_t first_warning_timestamp_ms;
     uint32_t first_fault_timestamp_ms;
 } FaultSafetyCapture;
 
@@ -550,6 +572,11 @@ static void capture_fault_safety(const TelemetryRecord *record, void *context)
 {
     FaultSafetyCapture *capture = context;
 
+    if (record->machine_status == MACHINE_WARNING && !capture->warning_seen) {
+        capture->warning_seen = true;
+        capture->first_warning_timestamp_ms = record->timestamp_ms;
+    }
+
     if (record->machine_status != MACHINE_FAULT) {
         return;
     }
@@ -558,7 +585,7 @@ static void capture_fault_safety(const TelemetryRecord *record, void *context)
         capture->fault_seen = true;
         capture->first_fault_timestamp_ms = record->timestamp_ms;
     }
-    if (record->pwm_duty != 0.0f) {
+    if (record->applied_pwm_duty != 0.0f) {
         capture->nonzero_fault_pwm_seen = true;
     }
 }
@@ -572,7 +599,8 @@ static bool records_are_equal(
         && first->target_rpm == second->target_rpm
         && first->measured_rpm == second->measured_rpm
         && first->measured_rpm_valid == second->measured_rpm_valid
-        && first->pwm_duty == second->pwm_duty
+        && first->controller_pwm_duty == second->controller_pwm_duty
+        && first->applied_pwm_duty == second->applied_pwm_duty
         && first->controller_status == second->controller_status
         && first->machine_status == second->machine_status
         && first->fault_code == second->fault_code
@@ -608,7 +636,8 @@ static bool complete_simulations_are_deterministic(void)
     ASSERT_TRUE(sensor.records[55].fault_code == FAULT_SENSOR_SIGNAL_INVALID);
     ASSERT_TRUE(sensor.records[55].controller_status == CONTROLLER_INPUT_FAULT);
     ASSERT_TRUE(!sensor.records[55].measured_rpm_valid);
-    ASSERT_TRUE(sensor.records[55].pwm_duty == 0.0f);
+    ASSERT_TRUE(sensor.records[55].controller_pwm_duty == 0.0f);
+    ASSERT_TRUE(sensor.records[55].applied_pwm_duty == 0.0f);
 
     ASSERT_TRUE(jam.records[59].machine_status == MACHINE_RUNNING);
     ASSERT_TRUE(jam.records[60].timestamp_ms == 6000U);
@@ -616,8 +645,11 @@ static bool complete_simulations_are_deterministic(void)
     ASSERT_TRUE(jam.records[66].machine_status == MACHINE_WARNING);
     ASSERT_TRUE(jam.records[67].timestamp_ms == 6700U);
     ASSERT_TRUE(jam.records[67].fault_code == FAULT_MOTOR_STALL);
-    ASSERT_TRUE(jam.records[67].controller_status == CONTROLLER_DISABLED);
-    ASSERT_TRUE(jam.records[67].pwm_duty == 0.0f);
+    ASSERT_TRUE(jam.records[67].controller_status == CONTROLLER_RUNNING);
+    ASSERT_TRUE(jam.records[67].controller_pwm_duty == 100.0f);
+    ASSERT_TRUE(jam.records[67].applied_pwm_duty == 0.0f);
+    ASSERT_TRUE(jam.records[68].controller_status == CONTROLLER_DISABLED);
+    ASSERT_TRUE(jam.records[68].controller_pwm_duty == 0.0f);
 
     ASSERT_TRUE(simulation_run(
         SCENARIO_MECHANICAL_JAM,
@@ -625,8 +657,14 @@ static bool complete_simulations_are_deterministic(void)
         capture_fault_safety,
         &jam_safety
     ));
+    ASSERT_TRUE(jam_safety.warning_seen);
     ASSERT_TRUE(jam_safety.fault_seen);
-    ASSERT_TRUE(jam_safety.first_fault_timestamp_ms == 6690U);
+    ASSERT_TRUE(jam_safety.first_fault_timestamp_ms == 6700U);
+    ASSERT_TRUE(
+        jam_safety.first_fault_timestamp_ms
+            - jam_safety.first_warning_timestamp_ms
+        == 750U
+    );
     ASSERT_TRUE(!jam_safety.nonzero_fault_pwm_seen);
     return true;
 }
@@ -639,7 +677,8 @@ static TelemetryRecord example_telemetry_record(void)
     record.target_rpm = 1800.0f;
     record.measured_rpm = 1500.0f;
     record.measured_rpm_valid = true;
-    record.pwm_duty = 55.0f;
+    record.controller_pwm_duty = 55.0f;
+    record.applied_pwm_duty = 55.0f;
     record.controller_status = CONTROLLER_RUNNING;
     record.machine_status = MACHINE_WARNING;
     record.fault_code = FAULT_NONE;
@@ -660,7 +699,8 @@ static bool telemetry_json_contains_required_fields(void)
     ASSERT_TRUE(strstr(line, "\"timestamp_ms\":1200") != NULL);
     ASSERT_TRUE(strstr(line, "\"target_rpm\":1800.0") != NULL);
     ASSERT_TRUE(strstr(line, "\"measured_rpm\":1500.0") != NULL);
-    ASSERT_TRUE(strstr(line, "\"pwm_duty\":55.0") != NULL);
+    ASSERT_TRUE(strstr(line, "\"controller_pwm_duty\":55.0") != NULL);
+    ASSERT_TRUE(strstr(line, "\"applied_pwm_duty\":55.0") != NULL);
     ASSERT_TRUE(strstr(line, "\"controller_status\":\"running\"") != NULL);
     ASSERT_TRUE(strstr(line, "\"machine_status\":\"warning\"") != NULL);
     ASSERT_TRUE(strstr(line, "\"fault_code\":\"NONE\"") != NULL);
@@ -681,7 +721,7 @@ static bool telemetry_json_contains_required_fields(void)
     ASSERT_TRUE(telemetry_write_record(stream, TELEMETRY_CSV, &record));
     rewind(stream);
     ASSERT_TRUE(fgets(line, sizeof(line), stream) != NULL);
-    ASSERT_TRUE(strstr(line, "1200,1800.0,,55.0,") != NULL);
+    ASSERT_TRUE(strstr(line, "1200,1800.0,,55.0,55.0,") != NULL);
     ASSERT_TRUE(fclose(stream) == 0);
 
     stream = tmpfile();
@@ -764,7 +804,7 @@ int main(void)
     run_test("sensor fault monitor", machine_monitor_latches_sensor_fault);
     run_test("other controller faults", machine_monitor_rejects_other_invalid_controller_state);
     run_test("deterministic full simulations", complete_simulations_are_deterministic);
-    run_test("telemetry JSON schema", telemetry_json_contains_required_fields);
+    run_test("telemetry fields and nulls", telemetry_json_contains_required_fields);
     run_test("telemetry escaping and validation", telemetry_escapes_strings_and_rejects_invalid_numbers);
 
     printf("\n%d tests, %d failures\n", tests_run, tests_failed);

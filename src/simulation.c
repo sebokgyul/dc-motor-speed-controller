@@ -91,7 +91,8 @@ bool simulation_run(
             record.target_rpm = output.target_rpm;
             record.measured_rpm = output.measured_rpm;
             record.measured_rpm_valid = output.measured_rpm_valid;
-            record.pwm_duty = hal_pwm_read(&hal);
+            record.controller_pwm_duty = output.pwm_duty;
+            record.applied_pwm_duty = hal_pwm_read(&hal);
             record.controller_status = output.status;
             record.machine_status = machine_status;
             record.fault_code = monitor.fault_code;

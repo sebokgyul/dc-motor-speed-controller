@@ -80,7 +80,7 @@ int motor_model_rpm_to_adc(float speed_rpm)
     float adc_value;
 
     if (!isfinite(speed_rpm)) {
-        return 0;
+        return -1;
     }
 
     limited_speed = clamp(speed_rpm, 0.0f, MOTOR_MAX_SPEED_RPM);
