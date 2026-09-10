@@ -114,13 +114,13 @@ bool telemetry_write_header(FILE *stream, TelemetryFormat format)
     if (format == TELEMETRY_TABLE) {
         result = fprintf(
             stream,
-            " time | target | measured | pwm duty | controller          | machine  | fault\n"
-            "======+========+==========+==========+=====================+==========+============================\n"
+            " time | target | measured | pi req | applied | controller          | machine  | fault\n"
+            "======+========+==========+========+=========+=====================+==========+============================\n"
         );
     } else if (format == TELEMETRY_CSV) {
         result = fprintf(
             stream,
-            "timestamp_ms,target_rpm,measured_rpm,pwm_duty,controller_status,machine_status,fault_code,fault_message\n"
+            "timestamp_ms,target_rpm,measured_rpm,controller_pwm_duty,applied_pwm_duty,controller_status,machine_status,fault_code,fault_message\n"
         );
     } else if (format == TELEMETRY_JSON_LINES) {
         return true;
@@ -144,7 +144,8 @@ bool telemetry_write_record(
         || record->fault_message == NULL
         || !isfinite(record->target_rpm)
         || !isfinite(record->measured_rpm)
-        || !isfinite(record->pwm_duty)) {
+        || !isfinite(record->controller_pwm_duty)
+        || !isfinite(record->applied_pwm_duty)) {
         return false;
     }
 
@@ -165,11 +166,12 @@ bool telemetry_write_record(
 
         result = fprintf(
             stream,
-            "%5.1f | %6.0f | %8s | %8.1f | %-19s | %-8s | %s\n",
+            "%5.1f | %6.0f | %8s | %6.1f | %7.1f | %-19s | %-8s | %s\n",
             (double)record->timestamp_ms / 1000.0,
             (double)record->target_rpm,
             measured_rpm,
-            (double)record->pwm_duty,
+            (double)record->controller_pwm_duty,
+            (double)record->applied_pwm_duty,
             controller_status_name(record->controller_status),
             machine_status_name(record->machine_status),
             fault_code_name(record->fault_code)
@@ -185,7 +187,12 @@ bool telemetry_write_record(
             || (record->measured_rpm_valid
                 ? fprintf(stream, "%.1f", (double)record->measured_rpm) < 0
                 : fputs("null", stream) < 0)
-            || fprintf(stream, ",\"pwm_duty\":%.1f,\"controller_status\":", (double)record->pwm_duty) < 0
+            || fprintf(
+                stream,
+                ",\"controller_pwm_duty\":%.1f,\"applied_pwm_duty\":%.1f,\"controller_status\":",
+                (double)record->controller_pwm_duty,
+                (double)record->applied_pwm_duty
+            ) < 0
             || !write_json_string(stream, controller_status_name(record->controller_status))
             || fputs(",\"machine_status\":", stream) < 0
             || !write_json_string(stream, machine_status_name(record->machine_status))
@@ -207,7 +214,12 @@ bool telemetry_write_record(
         if (result < 0
             || (record->measured_rpm_valid
                 && fprintf(stream, "%.1f", (double)record->measured_rpm) < 0)
-            || fprintf(stream, ",%.1f,", (double)record->pwm_duty) < 0
+            || fprintf(
+                stream,
+                ",%.1f,%.1f,",
+                (double)record->controller_pwm_duty,
+                (double)record->applied_pwm_duty
+            ) < 0
             || !write_csv_string(stream, controller_status_name(record->controller_status))
             || fputc(',', stream) == EOF
             || !write_csv_string(stream, machine_status_name(record->machine_status))

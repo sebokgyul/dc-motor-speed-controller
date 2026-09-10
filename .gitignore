@@ -1,1 +1,5 @@
 build/
+.sites-runtime/
+*.swp
+*.swo
+.DS_Store

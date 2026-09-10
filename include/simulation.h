@@ -12,7 +12,8 @@ typedef struct {
     float target_rpm;
     float measured_rpm;
     bool measured_rpm_valid;
-    float pwm_duty;
+    float controller_pwm_duty;
+    float applied_pwm_duty;
     ControllerStatus controller_status;
     MachineStatus machine_status;
     FaultCode fault_code;

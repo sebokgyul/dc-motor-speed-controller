@@ -1,6 +1,6 @@
-# Approved Troubleshooting Samples for the Demo
+# Sample Troubleshooting Notes
 
-These are fictional, approved-sample instructions for the deterministic portfolio demo. They are not instructions for real equipment. A real deployment would use site-controlled maintenance documents reviewed for the specific machine and operator role.
+These fictional notes supply wording for the deterministic dashboard demo. They are not approved instructions for real equipment. A real deployment would use site-controlled documents reviewed for the specific machine and operator role.
 
 ## SOP-01: Safe inspection and escalation
 

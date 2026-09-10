@@ -20,6 +20,7 @@ void machine_monitor_init(MachineMonitor *monitor)
     monitor->status = MACHINE_DISABLED;
     monitor->fault_code = FAULT_NONE;
     monitor->stall_elapsed_seconds = 0.0f;
+    monitor->stall_active = false;
     monitor->stop_requested = false;
 }
 
@@ -47,6 +48,12 @@ MachineStatus machine_monitor_update(
         return monitor->status;
     }
 
+    if (controller_output.status == CONTROLLER_RUNNING
+        && !controller_output.measured_rpm_valid) {
+        latch_fault(monitor, FAULT_SENSOR_SIGNAL_INVALID);
+        return monitor->status;
+    }
+
     if (controller_output.status == CONTROLLER_CONFIGURATION_FAULT
         || !isfinite(controller_output.target_rpm)
         || !isfinite(controller_output.measured_rpm)
@@ -65,6 +72,7 @@ MachineStatus machine_monitor_update(
 
     if (!run_requested || controller_output.status == CONTROLLER_DISABLED) {
         monitor->stall_elapsed_seconds = 0.0f;
+        monitor->stall_active = false;
         monitor->status = MACHINE_DISABLED;
         return monitor->status;
     }
@@ -76,7 +84,15 @@ MachineStatus machine_monitor_update(
 
     if (!possible_stall) {
         monitor->stall_elapsed_seconds = 0.0f;
+        monitor->stall_active = false;
         monitor->status = MACHINE_RUNNING;
+        return monitor->status;
+    }
+
+    if (!monitor->stall_active) {
+        monitor->stall_active = true;
+        monitor->stall_elapsed_seconds = 0.0f;
+        monitor->status = MACHINE_WARNING;
         return monitor->status;
     }
 
