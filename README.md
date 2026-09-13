@@ -22,5 +22,3 @@ make test
 ```
 
 The motor model is intentionally simple. AI was used to assist with tests and documentation.
-# dc-motor-speed-controller
-# dc-motor-speed-controller
