@@ -1,0 +1,22 @@
+@startuml
+title Motor control simulation components
+
+skinparam componentStyle rectangle
+
+component "Demo scenario" as Scenario
+component "Simulated HAL" as HAL
+component "PI motor controller" as Controller
+component "First order motor model" as Motor
+
+Scenario -> HAL : target speed and enable
+HAL -> Controller : ADC values and GPIO state
+Controller -> HAL : PWM duty and fault state
+HAL -> Motor : PWM duty
+Motor -> HAL : measured speed
+
+note bottom of HAL
+  The simulated HAL can later be
+  replaced by hardware drivers.
+end note
+
+@enduml
