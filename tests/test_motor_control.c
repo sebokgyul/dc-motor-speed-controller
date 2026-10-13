@@ -19,14 +19,9 @@ static int tests_failed = 0;
         } \
     } while (0)
 
-static float absolute_value(float value)
-{
-    return value < 0.0f ? -value : value;
-}
-
 static bool float_is_close(float actual, float expected, float tolerance)
 {
-    return absolute_value(actual - expected) <= tolerance;
+    return fabsf(actual - expected) <= tolerance;
 }
 
 static bool controller_is_disabled_when_enable_is_low(void)
