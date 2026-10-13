@@ -2,21 +2,7 @@
 
 #include <math.h>
 
-#define PWM_MIN_DUTY 0.0f
-#define PWM_MAX_DUTY 100.0f
-
-static float clamp(float value, float minimum, float maximum)
-{
-    if (value < minimum) {
-        return minimum;
-    }
-
-    if (value > maximum) {
-        return maximum;
-    }
-
-    return value;
-}
+#include "util.h"
 
 static bool adc_value_is_valid(int value)
 {

@@ -3,21 +3,7 @@
 #include <math.h>
 
 #include "motor_config.h"
-
-#define PWM_MAX_DUTY 100.0f
-
-static float clamp(float value, float minimum, float maximum)
-{
-    if (value < minimum) {
-        return minimum;
-    }
-
-    if (value > maximum) {
-        return maximum;
-    }
-
-    return value;
-}
+#include "util.h"
 
 void motor_model_init(MotorModel *model, float time_constant_seconds)
 {
@@ -37,7 +23,7 @@ void motor_model_update(MotorModel *model, float pwm_duty, float sample_time_sec
         return;
     }
 
-    limited_duty = clamp(pwm_duty, 0.0f, PWM_MAX_DUTY);
+    limited_duty = clamp(pwm_duty, PWM_MIN_DUTY, PWM_MAX_DUTY);
     steady_state_speed = MOTOR_MAX_SPEED_RPM * limited_duty / PWM_MAX_DUTY;
 
     model->speed_rpm += sample_time_seconds / model->time_constant_seconds
